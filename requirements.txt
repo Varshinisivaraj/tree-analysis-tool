@@ -1,5 +1,5 @@
 streamlit==1.25.0
 opencv-python
 requests
-pillow
+pillow==9.5.0
 python-dotenv

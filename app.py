@@ -2,10 +2,12 @@ import streamlit as st
 import cv2
 import requests
 from PIL import Image
+from io import BytesIO
 import tempfile
-from math import sqrt, pow, radians, tan
+from math import sqrt, pow
 from dotenv import load_dotenv
 import os
+import uuid
 
 # Load environment variables
 load_dotenv()
@@ -28,7 +30,10 @@ def capture_image():
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         st.image(frame_rgb, caption="Live Feed", channels="RGB")
 
-        if st.button("Capture Full Tree Image", key="capture_tree_image_button"):
+        # Generate a unique key to avoid DuplicateWidgetID error
+        unique_key = str(uuid.uuid4())
+
+        if st.button("Capture Full Tree Image", key=unique_key):
             cv2.imwrite(temp_image_path, frame)
             st.success(f"Image saved at {temp_image_path}")
             break
@@ -46,9 +51,7 @@ def validate_image(image_path):
     return True
 
 def calculate_tree_height(distance, angle):
-    # Convert angle to radians
-    angle_rad = radians(angle)
-    height = distance * tan(angle_rad)
+    height = distance * sqrt(1 + pow(angle, 2))  # Simplified height calculation
     st.write(f"Calculated tree height: {height:.2f} units")
     return height
 
@@ -93,7 +96,9 @@ def main():
     st.title("Tree Image Analysis Tool")
 
     st.header("Step 1: Capture Full Tree Image")
-    if st.button("Capture Image", key="capture_tree_button"):
+    capture_button = st.button("Capture Full Tree Image", key="capture_tree_image_button")
+
+    if capture_button:
         tree_image_path = capture_image()
 
         if tree_image_path and validate_image(tree_image_path):
