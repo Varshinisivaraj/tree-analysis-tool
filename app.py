@@ -1,5 +1,4 @@
 import streamlit as st
-import cv2
 import requests
 from PIL import Image
 from io import BytesIO
@@ -14,31 +13,20 @@ load_dotenv()
 
 def capture_image():
     st.write("Launching camera...")
-    cap = cv2.VideoCapture(0)
-    temp_image_path = tempfile.NamedTemporaryFile(delete=False, suffix='.png').name
+    
+    # Use Streamlit's camera_input widget
+    camera_input = st.camera_input("Take a picture")
 
-    if not cap.isOpened():
-        st.error("Unable to access the camera.")
+    if camera_input is None:
+        st.warning("Please take a picture!")
         return None
 
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            st.error("Failed to grab frame.")
-            break
+    # Save the captured image to a temporary file
+    temp_image_path = tempfile.NamedTemporaryFile(delete=False, suffix='.png').name
+    with open(temp_image_path, "wb") as f:
+        f.write(camera_input.getbuffer())
 
-        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        st.image(frame_rgb, caption="Live Feed", channels="RGB")
-
-        # Generate a unique key to avoid DuplicateWidgetID error
-        unique_key = str(uuid.uuid4())
-
-        if st.button("Capture Full Tree Image", key=unique_key):
-            cv2.imwrite(temp_image_path, frame)
-            st.success(f"Image saved at {temp_image_path}")
-            break
-
-    cap.release()
+    st.success(f"Image saved at {temp_image_path}")
     return temp_image_path
 
 def validate_image(image_path):
