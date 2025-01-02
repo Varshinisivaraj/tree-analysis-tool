@@ -1,1 +1,17 @@
- 
+# Ignore build and configuration files
+/build/
+CMakeCache.txt
+CMakeFiles/
+CMakeLists.txt.user
+cmake_install.cmake
+Makefile
+
+# Ignore Python specific files
+__pycache__/
+*.pyc
+*.pyo
+
+# Ignore virtual environments
+venv/
+.venv/
+.myenv
