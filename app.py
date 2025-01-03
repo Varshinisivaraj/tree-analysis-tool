@@ -16,12 +16,13 @@ def capture_image():
     st.write("Launching camera...")
     cap = cv2.VideoCapture(0)
     temp_image_path = tempfile.NamedTemporaryFile(delete=False, suffix='.png').name
+    image_captured = False
 
     if not cap.isOpened():
         st.error("Unable to access the camera.")
         return None
 
-    while True:
+    while not image_captured:
         ret, frame = cap.read()
         if not ret:
             st.error("Failed to grab frame.")
@@ -33,13 +34,16 @@ def capture_image():
         # Generate a unique key to avoid DuplicateWidgetID error
         unique_key = str(uuid.uuid4())
 
+        # Capture button
         if st.button("Capture Full Tree Image", key=unique_key):
             cv2.imwrite(temp_image_path, frame)
             st.success(f"Image saved at {temp_image_path}")
+            image_captured = True  # Stop the loop after capturing the image
             st.session_state.tree_image_path = temp_image_path  # Save the image path to session state
             break
 
     cap.release()
+    return temp_image_path
 
 def validate_image(image_path):
     with Image.open(image_path) as img:
