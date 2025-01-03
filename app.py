@@ -1,63 +1,11 @@
 import streamlit as st
-import cv2
 import requests
 from PIL import Image
-from io import BytesIO
-import tempfile
-from math import sqrt, pow
-from dotenv import load_dotenv
 import os
-import uuid
-
+from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()
-
-
-class CameraHandler:
-    def __init__(self):
-        """Initialize session state variables."""
-        if "camera_active" not in st.session_state:
-            st.session_state.camera_active = False
-        if "image_path" not in st.session_state:
-            st.session_state.image_path = None
-
-    def start_camera(self):
-        """Start the camera feed."""
-        st.session_state.camera_active = True
-
-    def capture_image(self):
-        """Capture image when the camera is active."""
-        if st.session_state.camera_active:
-            st.write("Launching camera...")
-            cap = cv2.VideoCapture(0)
-
-            if not cap.isOpened():
-                st.error("Unable to access the camera.")
-                st.session_state.camera_active = False
-                return None
-
-            ret, frame = cap.read()
-            if not ret:
-                st.error("Failed to grab frame.")
-                st.session_state.camera_active = False
-                return None
-
-            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            st.image(frame_rgb, caption="Live Feed", channels="RGB")
-
-            if st.button("Capture Image", key="capture_button"):
-                temp_image_path = tempfile.NamedTemporaryFile(delete=False, suffix='.png').name
-                cv2.imwrite(temp_image_path, frame)
-                st.success(f"Image saved at {temp_image_path}")
-                st.session_state.image_path = temp_image_path
-                st.session_state.camera_active = False  # Stop camera feed
-                cap.release()
-                return temp_image_path
-
-            cap.release()
-
-        return None
 
 
 class TreeIdentification:
@@ -107,38 +55,32 @@ class WikipediaDetails:
 
 class TreeApp:
     def __init__(self):
-        self.camera_handler = CameraHandler()
+        self.image_path = None
 
     def run(self):
-        # Initialize session state variables
-        if "image_path" not in st.session_state:
-            st.session_state.image_path = None
-
         st.title("Tree Image Analysis Tool")
 
-        # Step 1: Start Camera
-        if st.button("Start Camera", key="start_camera"):
-            self.camera_handler.start_camera()
+        # Step 1: Capture Image with Camera
+        uploaded_image = st.camera_input("Capture Tree Image")
 
-        # Step 2: Capture Image
-        image_path = self.camera_handler.capture_image()
+        if uploaded_image is not None:
+            self.image_path = os.path.join("temp", f"{uploaded_image.name}")
+            with open(self.image_path, "wb") as f:
+                f.write(uploaded_image.getbuffer())
 
-        # Step 3: Proceed if image is captured
-        if image_path:
-            st.session_state.image_path = image_path
-            st.success("Image captured successfully!")
-            st.image(Image.open(image_path), caption="Captured Tree Image", use_column_width=True)
+            # Step 2: Display the captured image
+            st.image(self.image_path, caption="Captured Tree Image", use_column_width=True)
 
-            # Step 4: Identify Tree
-            st.header("Step 4: Identify Tree")
-            plant_name, wiki_url = TreeIdentification.identify_tree(image_path)
+            # Step 3: Identify Tree
+            st.header("Step 3: Identify Tree")
+            plant_name, wiki_url = TreeIdentification.identify_tree(self.image_path)
 
             if plant_name:
                 st.success(f"Identified Tree: {plant_name}")
                 st.write(f"Wikipedia URL: {wiki_url}")
 
-                # Step 5: Fetch Wikipedia Details
-                st.header("Step 5: Fetch Wikipedia Details")
+                # Step 4: Fetch Wikipedia Details
+                st.header("Step 4: Fetch Wikipedia Details")
                 wiki_details = WikipediaDetails.fetch_wikipedia_details(wiki_url)
                 st.text(wiki_details)
             else:
