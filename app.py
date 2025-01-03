@@ -1,28 +1,32 @@
 import streamlit as st
 import cv2
-import requests
-from PIL import Image
-from io import BytesIO
 import tempfile
+from PIL import Image
 from math import sqrt, pow
 from dotenv import load_dotenv
 import os
-import uuid
+import requests
 
 # Load environment variables
 load_dotenv()
 
+# Initialize session state for image capture
+if "image_captured" not in st.session_state:
+    st.session_state.image_captured = False
+if "image_path" not in st.session_state:
+    st.session_state.image_path = None
+
 def capture_image():
+    """Launch the camera to capture an image."""
     st.write("Launching camera...")
     cap = cv2.VideoCapture(0)
     temp_image_path = tempfile.NamedTemporaryFile(delete=False, suffix='.png').name
-    image_captured = False
 
     if not cap.isOpened():
         st.error("Unable to access the camera.")
         return None
 
-    while not image_captured:
+    while not st.session_state.image_captured:
         ret, frame = cap.read()
         if not ret:
             st.error("Failed to grab frame.")
@@ -31,21 +35,18 @@ def capture_image():
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         st.image(frame_rgb, caption="Live Feed", channels="RGB")
 
-        # Generate a unique key to avoid DuplicateWidgetID error
-        unique_key = str(uuid.uuid4())
-
-        # Capture button
-        if st.button("Capture Full Tree Image", key=unique_key):
+        # Display capture button
+        if st.button("Capture Full Tree Image"):
             cv2.imwrite(temp_image_path, frame)
-            st.success(f"Image saved at {temp_image_path}")
-            image_captured = True  # Stop the loop after capturing the image
-            st.session_state.tree_image_path = temp_image_path  # Save the image path to session state
+            st.session_state.image_captured = True
+            st.session_state.image_path = temp_image_path
+            st.success("Image captured successfully!")
             break
 
     cap.release()
-    return temp_image_path
 
 def validate_image(image_path):
+    """Validate the captured image for required conditions."""
     with Image.open(image_path) as img:
         width, height = img.size
         st.write(f"Image dimensions: {width}x{height}")
@@ -55,11 +56,13 @@ def validate_image(image_path):
     return True
 
 def calculate_tree_height(distance, angle):
-    height = distance * sqrt(1 + pow(angle, 2))  # Simplified height calculation
+    """Calculate tree height using distance and angle."""
+    height = distance * sqrt(1 + pow(angle, 2))
     st.write(f"Calculated tree height: {height:.2f} units")
     return height
 
 def identify_tree(image_path):
+    """Identify the tree using an external API."""
     api_key = os.getenv("PLANT_ID_API_KEY")
     api_url = "https://api.plant.id/v2/identify"
 
@@ -87,6 +90,7 @@ def identify_tree(image_path):
     return None, None
 
 def fetch_wikipedia_details(wiki_url):
+    """Fetch details from the provided Wikipedia URL."""
     if wiki_url:
         response = requests.get(wiki_url)
         if response.status_code == 200:
@@ -99,24 +103,19 @@ def fetch_wikipedia_details(wiki_url):
 def main():
     st.title("Tree Image Analysis Tool")
 
-    # Check if the tree image has already been captured
-    if 'tree_image_path' not in st.session_state:
+    if not st.session_state.image_captured:
         st.header("Step 1: Capture Full Tree Image")
-        capture_button = st.button("Capture Full Tree Image", key="capture_tree_image_button")
+        capture_image()
 
-        if capture_button:
-            capture_image()
+    if st.session_state.image_captured:
+        tree_image_path = st.session_state.image_path
 
-        st.warning("Please capture the tree image before proceeding.")
-
-    else:
-        tree_image_path = st.session_state.tree_image_path
         if validate_image(tree_image_path):
             st.header("Step 2: Enter Distance and Angle for Tree Height Calculation")
             distance = st.number_input("Enter distance from the tree (units):", min_value=0.1, step=0.1)
             angle = st.number_input("Enter angle to the top of the tree (degrees):", min_value=0.1, step=0.1)
 
-            if st.button("Calculate Tree Height", key="calculate_height_button"):
+            if st.button("Calculate Tree Height"):
                 tree_height = calculate_tree_height(distance, angle)
 
             st.header("Step 3: Identify Tree")
