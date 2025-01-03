@@ -7,6 +7,10 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
+# Ensure the directory exists
+if not os.path.exists("temp"):
+    os.makedirs("temp")
+
 
 class TreeIdentification:
     @staticmethod
@@ -64,6 +68,7 @@ class TreeApp:
         uploaded_image = st.camera_input("Capture Tree Image")
 
         if uploaded_image is not None:
+            # Save the image to a temporary location
             self.image_path = os.path.join("temp", f"{uploaded_image.name}")
             with open(self.image_path, "wb") as f:
                 f.write(uploaded_image.getbuffer())
